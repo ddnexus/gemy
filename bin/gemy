@@ -1,0 +1,112 @@
+#! /usr/bin/env ruby
+
+require 'fileutils'
+require 'optparse'
+
+options = {}
+
+file_version = File.read('VERSION').strip
+copy = "gemy #{file_version} (c) 2012 Domizio Demichelis"
+
+optparse = OptionParser.new do |opts|
+
+  opts.banner = <<-banner
+    Gem CLI utils:
+        Simple Tool for managing gem local installation and push.
+    Usage:
+        gemy <command> [options]
+    <command>:
+        install   locally installs a version bumped with the commit SHA
+        push      build the gem, push to RubyGems, tag the commit and cleanup
+    Options:
+  banner
+
+
+  options[:name] = File.basename FileUtils.pwd
+  opts.on( '-n', '--name [GEMNAME]', "The gem name (default: dir name '#{options[:name]}')") do |n|
+    options[:name] = n
+  end
+
+  options[:force] = false
+  opts.on( '-f', '--force', 'execute the command even if the working tree is dirty' ) do
+    options[:force] = true
+  end
+
+  options[:clean] = false
+  opts.on( '-c', '--clean', 'clean old installations' ) do
+    options[:clean] = true
+  end
+
+  opts.on( '-v', '--version', 'Shows the version and exits' ) do
+    puts file_version
+    exit
+  end
+
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts copy
+    puts opts
+    exit
+  end
+
+end
+
+optparse.parse!
+
+puts copy
+
+def ensure_clean(command, force)
+  if !force && ! `git status -s`.empty?
+    puts <<-message.gsub(/^ {6}/, '')
+      #{command} aborted: the working tree is dirty!
+      If you know what you are doing you can use \`gemy #{command} -f\`"
+    message
+    exit(1)
+  end
+end
+
+command = ARGV.first
+
+case command
+
+when 'install'
+  ensure_clean(:install, options[:force])
+  system %(gem uninstall #{options[:name]} --all --ignore-dependencies --executables) if options[:clean]
+  begin
+    commit_id = `git log -1 --format="%h" HEAD`.strip
+    version = "#{file_version}.#{commit_id}"
+    File.open('VERSION', 'w') {|f| f.puts version }
+    versioned_name = "#{options[:name]}-#{version}.gem"
+    puts versioned_name
+    system %(gem build #{options[:name]}.gemspec)
+    system %(gem install '#{versioned_name}' --local --no-rdoc --no-ri)
+    puts <<-warning.gsub(/^ {6}/, '')
+
+      *******************************************************************************
+      *                                  WARNING                                    *
+      *******************************************************************************
+      * The version id of locally installed gems is comparable to a --pre version:  *
+      * i.e. it is alphabetically ordered (not numerically ordered), besides it     *
+      * includes the sah1 commit id which is not aphabetically ordered, so be sure  *
+      * your application picks the version you really intend to use                 *
+      *******************************************************************************
+
+    warning
+  ensure
+    FileUtils.remove_entry_secure versioned_name, true
+    File.open('VERSION', 'w') {|f| f.puts file_version }
+  end
+
+when 'push'
+  begin
+    ensure_clean(:push, options[:force])
+    versioned_name = "#{options[:name]}-#{file_version}.gem"
+    system %(gem build #{options[:name]}.gemspec)
+    system %(gem push #{versioned_name})
+    system %(git tag '#{file_version}')
+  ensure
+    FileUtils.remove_entry_secure versioned_name, true
+  end
+
+else
+  puts "unknown command: #{command.inspect}"
+end
