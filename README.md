@@ -4,7 +4,7 @@ Simple CLI tool useful for gem authors: it eases installing your gem locally, an
 
 ## Requirements
 
-`gemy` requires a `VERSION` file in the gem project root, and that the project is a `git` repository.
+`gemy` requires a `VERSION` file in the gem project root, and the project must be a `git` repository.
 
 ## Description
 

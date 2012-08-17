@@ -5,19 +5,19 @@ require 'optparse'
 
 options = {}
 
-file_version = File.read('VERSION').strip
+file_version = File.read(File.expand_path('../../VERSION', __FILE__)).strip
 copy = "gemy #{file_version} (c) 2012 Domizio Demichelis"
 
 optparse = OptionParser.new do |opts|
 
   opts.banner = <<-banner
     Gem CLI utils:
-        Simple Tool for managing gem local installation and push.
+        Simple Tool for managing gem local installation and rmote push.
     Usage:
         gemy <command> [options]
     <command>:
         install   locally installs a version bumped with the commit SHA
-        push      build the gem, push to RubyGems, tag the commit and cleanup
+        push      builds the gem, pushes to RubyGems, tags the commit and cleanups
     Options:
   banner
 
@@ -52,8 +52,6 @@ end
 
 optparse.parse!
 
-puts copy
-
 def ensure_clean(command, force)
   if !force && ! `git status -s`.empty?
     puts <<-message.gsub(/^ {6}/, '')
@@ -65,6 +63,10 @@ def ensure_clean(command, force)
 end
 
 command = ARGV.first
+
+exec 'gemy -h' if command.nil?
+
+puts copy
 
 case command
 
