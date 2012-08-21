@@ -5,8 +5,10 @@ require 'optparse'
 
 options = {}
 
-file_version = File.read(File.expand_path('../../VERSION', __FILE__)).strip
-copy = "gemy #{file_version} (c) 2012 Domizio Demichelis"
+gemy_version = File.read(File.expand_path('../../VERSION', __FILE__)).strip
+gem_version  = File.read('VERSION').strip if File.exist?('VERSION')
+
+copy = "gemy #{gemy_version} (c) 2012 Domizio Demichelis"
 
 optparse = OptionParser.new do |opts|
 
@@ -38,7 +40,7 @@ optparse = OptionParser.new do |opts|
   end
 
   opts.on( '-v', '--version', 'Shows the version and exits' ) do
-    puts file_version
+    puts gemy_version
     exit
   end
 
@@ -75,7 +77,7 @@ when 'install'
   system %(gem uninstall #{options[:name]} --all --ignore-dependencies --executables) if options[:clean]
   begin
     commit_id = `git log -1 --format="%h" HEAD`.strip
-    version = "#{file_version}.#{commit_id}"
+    version = "#{gem_version}.#{commit_id}"
     File.open('VERSION', 'w') {|f| f.puts version }
     versioned_name = "#{options[:name]}-#{version}.gem"
     puts versioned_name
@@ -95,16 +97,16 @@ when 'install'
     warning
   ensure
     FileUtils.remove_entry_secure versioned_name, true
-    File.open('VERSION', 'w') {|f| f.puts file_version }
+    File.open('VERSION', 'w') {|f| f.puts gem_version }
   end
 
 when 'push'
   begin
     ensure_clean(:push, options[:force])
-    versioned_name = "#{options[:name]}-#{file_version}.gem"
+    versioned_name = "#{options[:name]}-#{gemy_version}.gem"
     system %(gem build #{options[:name]}.gemspec)
     system %(gem push #{versioned_name})
-    system %(git tag '#{file_version}')
+    system %(git tag '#{gemy_version}')
   ensure
     FileUtils.remove_entry_secure versioned_name, true
   end
