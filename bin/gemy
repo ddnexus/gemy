@@ -103,10 +103,10 @@ when 'install'
 when 'push'
   begin
     ensure_clean(:push, options[:force])
-    versioned_name = "#{options[:name]}-#{gemy_version}.gem"
+    versioned_name = "#{options[:name]}-#{gem_version}.gem"
     system %(gem build #{options[:name]}.gemspec)
     system %(gem push #{versioned_name})
-    system %(git tag '#{gemy_version}')
+    system %(git tag '#{gem_version}')
   ensure
     FileUtils.remove_entry_secure versioned_name, true
   end
