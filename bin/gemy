@@ -14,7 +14,7 @@ optparse = OptionParser.new do |opts|
 
   opts.banner = <<-banner
     Gem CLI utils:
-        Simple Tool for managing gem local installation and rmote push.
+        Simple Tool for managing gem local installation and remote push.
     Usage:
         gemy <command> [options]
     <command>:
@@ -30,13 +30,18 @@ optparse = OptionParser.new do |opts|
   end
 
   options[:force] = false
-  opts.on( '-f', '--force', 'execute the command even if the working tree is dirty' ) do
+  opts.on( '-f', '--force', 'Executes the command even if the working tree is dirty' ) do
     options[:force] = true
   end
 
   options[:clean] = false
-  opts.on( '-c', '--clean', 'clean old installations' ) do
+  opts.on( '-c', '--clean', 'Clean old installations' ) do
     options[:clean] = true
+  end
+
+  options[:bump] = false
+  opts.on( '-b', '--bump', 'Bump local version with git SHA1' ) do
+    options[:bump] = true
   end
 
   opts.on( '-v', '--version', 'Shows the version and exits' ) do
@@ -66,7 +71,7 @@ end
 
 command = ARGV.first
 
-exec 'gemy -h' if command.nil?
+exec "#{$0} -h" if command.nil?
 
 puts copy
 
@@ -76,14 +81,18 @@ when 'install'
   ensure_clean(:install, options[:force])
   system %(gem uninstall #{options[:name]} --all --ignore-dependencies --executables) if options[:clean]
   begin
-    commit_id = `git log -1 --format="%h" HEAD`.strip
-    version = "#{gem_version}.#{commit_id}"
+    version = if options[:bump]
+                commit_id = `git log -1 --format="%h" HEAD`.strip
+                "#{gem_version}.#{commit_id}"
+              else
+                gem_version
+              end
     File.open('VERSION', 'w') {|f| f.puts version }
     versioned_name = "#{options[:name]}-#{version}.gem"
     puts versioned_name
     system %(gem build #{options[:name]}.gemspec)
     system %(gem install '#{versioned_name}' --local --no-rdoc --no-ri)
-    puts <<-warning.gsub(/^ {6}/, '')
+    puts <<-warning.gsub(/^ {6}/, '') if options[:bump]
 
       *******************************************************************************
       *                                  WARNING                                    *
